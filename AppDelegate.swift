@@ -1,44 +1,67 @@
-//
-//  AppDelegate.swift
-//  WeatherAPP
-//
-//  Created by hyeri kim on 31/07/2019.
-//  Copyright © 2019 hyeri kim. All rights reserved.
-//
-
 import UIKit
 
-@UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class ViewController: UIViewController {
 
-    var window: UIWindow?
+    // MARK: - IBOutlets
+    @IBOutlet weak var cityTextField: UITextField!
+    @IBOutlet weak var weatherLabel: UILabel!
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    // MARK: - View Lifecycle
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Do any additional setup after loading the view.
+    }
+
+    @IBAction func getWeatherButtonTapped(_ sender: UIButton) {
+        guard let city = cityTextField.text, !city.isEmpty else {
+            showAlert(message: "Please enter a city name.")
+            return
+        }
+        fetchWeather(city: city)
+    }
+
+    func fetchWeather(city: String) {
+        let apiKey = "YOUR_API_KEY" // OpenWeatherMap API key
+        let urlString = "https://api.openweathermap.org/data/2.5/weather?q=\(city)&appid=\(apiKey)"
         
-        return true
+        guard let url = URL(string: urlString) else {
+            showAlert(message: "Invalid URL.")
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { (data, response, error) in
+            if let error = error {
+                self.showAlert(message: error.localizedDescription)
+                return
+            }
+            
+            if let data = data {
+                do {
+                    let decoder = JSONDecoder()
+                    let weatherData = try decoder.decode(WeatherData.self, from: data)
+                    DispatchQueue.main.async {
+                        self.weatherLabel.text = "Weather: \(weatherData.weather[0].description)"
+                    }
+                } catch let error {
+                    self.showAlert(message: error.localizedDescription)
+                }
+            }
+        }.resume()
     }
 
-    func applicationWillResignActive(_ application: UIApplication) {
-        // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
-        // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.
+    func showAlert(message: String) {
+        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        DispatchQueue.main.async {
+            self.present(alert, animated: true, completion: nil)
+        }
     }
+}
 
-    func applicationDidEnterBackground(_ application: UIApplication) {
-        // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
-        // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
-    }
+struct WeatherData: Codable {
+    let weather: [Weather]
+}
 
-    func applicationWillEnterForeground(_ application: UIApplication) {
-        // Called as part of the transition from the background to the active state; here you can undo many of the changes made on entering the background.
-    }
-
-    func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-    }
-
-    func applicationWillTerminate(_ application: UIApplication) {
-        // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
-    }
-
-
+struct Weather: Codable {
+    let description: String
 }
